@@ -56,17 +56,19 @@ Timer t3;
 String btBuffer;
 CRGB colorCRGB = CRGB::Red;           // Change this if you want another default color, for example CRGB::Blue
 CHSV colorCHSV = CHSV(95, 255, 255);  // Green
-CRGB colorOFF  = CRGB(20,20,20);      // Color of the segments that are 'disabled'. You can also set it to CRGB::Black
-volatile int colorMODE = 1;           // 0=CRGB, 1=CHSV, 2=Constant Color Changing pattern
+CRGB colorOFF  = CRGB::Black;      // Color of the segments that are 'disabled'. You can also set it to CRGB::Black
+volatile int colorMODE = 2;           // 0=CRGB, 1=CHSV, 2=Constant Color Changing pattern
 volatile int mode = 0;                // 0=Clock, 1=Temperature, 2=Humidity, 3=Scoreboard, 4=Time counter
 volatile int scoreLeft = 0;
 volatile int scoreRight = 0;
 volatile long timerValue = 0;
 volatile int timerRunning = 0;
+volatile int changeHueCounter = 0;
 
 #define blinkDots   0                 // Set this to 1 if you want the dots to blink in clock mode, set it to value 0 to disable
 #define hourFormat  24                // Set this to 12 or to 24 hour format
 #define temperatureMode 'C'           // Set this to 'C' for Celcius or 'F' for Fahrenheit
+#define changeHueDelay 20           // Delay of ticks between hue incrementations in color mode 2
 
 void setup () {
 
@@ -129,7 +131,12 @@ void updateHue() {
   if (colorCHSV.hue >= 255){
     colorCHSV.hue = 0;
   } else {
-    colorCHSV.hue++;
+    changeHueCounter++;
+
+    if(changeHueCounter == changeHueDelay) {
+      changeHueCounter = 0;
+      colorCHSV.hue++;
+    }
   }
   refreshDisplay();
 }
@@ -154,6 +161,8 @@ void refreshDisplay() {
     default:   
       break; 
   }
+
+  modifyBrightness();
 }
 
 void refreshTimer() {
@@ -363,4 +372,36 @@ String getValue(String data, char separator, int index) {
   }
 
   return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
+}
+
+void modifyBrightness() {
+  int max_brightness = 150;
+  int min_brightness = 1;
+
+  int night_start = 24;
+  int night_end = 6;
+
+  int day_start = 8;
+  int day_end = 20;
+
+  DateTime now = rtc.now();
+
+  int h  = now.hour();
+  int m = now.minute();
+
+  if(h < night_end) {
+    FastLED.setBrightness(min_brightness); 
+  }
+  else if(h >= day_start && h <= day_end) {
+    FastLED.setBrightness(max_brightness);
+  }
+  else if(h >= night_end && h < day_start) {
+    long brightness = min_brightness + (max_brightness - min_brightness) *  ((day_start - h) * 60 + m ) / ((day_start - night_end) * 60);
+    FastLED.setBrightness(brightness);
+  }
+  else if(h > day_end && h < night_start) {
+    long brightness = max_brightness - (max_brightness - min_brightness) *  ((h - day_end) * 60 + m ) / ((night_start - day_end) * 60);
+    FastLED.setBrightness(brightness);
+  }
+
 }
