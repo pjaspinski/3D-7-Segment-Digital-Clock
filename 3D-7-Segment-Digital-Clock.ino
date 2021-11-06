@@ -64,6 +64,7 @@ volatile int scoreRight = 0;
 volatile long timerValue = 0;
 volatile int timerRunning = 0;
 volatile int changeHueCounter = 0;
+volatile int maxBrightness = 120;
 
 #define blinkDots   0                 // Set this to 1 if you want the dots to blink in clock mode, set it to value 0 to disable
 #define hourFormat  24                // Set this to 12 or to 24 hour format
@@ -197,7 +198,7 @@ void processCommand(){
     colorCRGB.green = G;
     colorCRGB.blue = B;
     colorMODE = 0;
-    if (D > 0) FastLED.setBrightness(D); 
+    if (D > 0) maxBrightness = D; 
   } else if (btBuffer.startsWith("HSVD")) {
     long H = getValue(btBuffer, ',', 1).toInt();
     long S = getValue(btBuffer, ',', 2).toInt();
@@ -207,7 +208,7 @@ void processCommand(){
     colorCHSV.sat = S;
     colorCHSV.val = V;
     colorMODE = 1;
-    if (D > 0) FastLED.setBrightness(D);
+    if (D > 0) maxBrightness = D;
   } else if (btBuffer.startsWith("RTC")) {
     long y = getValue(btBuffer, ',', 1).toInt();
     long m = getValue(btBuffer, ',', 2).toInt();
@@ -375,7 +376,6 @@ String getValue(String data, char separator, int index) {
 }
 
 void modifyBrightness() {
-  int max_brightness = 150;
   int min_brightness = 1;
 
   int night_start = 24;
@@ -393,14 +393,14 @@ void modifyBrightness() {
     FastLED.setBrightness(min_brightness); 
   }
   else if(h >= day_start && h <= day_end) {
-    FastLED.setBrightness(max_brightness);
+    FastLED.setBrightness(maxBrightness);
   }
   else if(h >= night_end && h < day_start) {
-    long brightness = min_brightness + (max_brightness - min_brightness) *  ((day_start - h) * 60 + m ) / ((day_start - night_end) * 60);
+    long brightness = min_brightness + (maxBrightness - min_brightness) *  ((day_start - h) * 60 + m ) / ((day_start - night_end) * 60);
     FastLED.setBrightness(brightness);
   }
   else if(h > day_end && h < night_start) {
-    long brightness = max_brightness - (max_brightness - min_brightness) *  ((h - day_end) * 60 + m ) / ((night_start - day_end) * 60);
+    long brightness = maxBrightness - (maxBrightness - min_brightness) *  ((h - day_end) * 60 + m ) / ((night_start - day_end) * 60);
     FastLED.setBrightness(brightness);
   }
 
